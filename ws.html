@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        @font-face {
+            font-family: 'digital-clock-font';
+            src: url('Digital Dismay.otf');
+        }
+
+        body {
+            background: #191b26;
+            color: #FFF;
+            font-family: 'digital-clock-font';
+        }
+
+        .block {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            position: absolute;
+            width: 100%;
+            inset: 0;
+        }
+
+        #status {
+            font-family: Arial;
+            background: grey;
+            opacity: 0.5;
+            padding: 5px 20px;
+            font-weight: 600;
+            font-size: clamp(50px, 80vh, 120px);
+            border-radius: 20px;
+        }
+
+        .started #status {
+            background: darkred;
+            opacity: 1;
+            animation: delay-animation 5s linear infinite;
+        }
+
+        .starting #display {
+            animation: blink 1s linear infinite;
+        }
+
+        #display {
+            font-size: clamp(50px, 90vh, 200px);
+            text-align: center;
+            line-height: 0;
+            margin-left: 50px
+        }
+
+        .paused:not(.started):not(.starting) #display {
+            color: yellow;
+            animation: blink 2s linear infinite;
+        }
+
+        .starting #display{
+            color: #FFF;
+            animation: blink 0.5s linear infinite;
+        }
+
+        .started #display {
+            color: rgb(0, 250, 29);
+        }
+
+        @keyframes blink {
+            0% {
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                opacity: 0;
+            }
+        }
+
+        
+        @keyframes delay-animation {
+            0% {
+                opacity: 0;
+            }
+
+            20% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity:1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="block">
+        <div id="status">ON</div>
+        <div id="display">00:00:00</div>
+    </div>
+    <script>
+        //const obs = new OBSWebSocket();
+        const Counter = {
+            _display: 'display',
+            _currentTime: 0,
+            _bkpTime: 0,
+            _timer: null,
+            start() {
+                document.getElementById(Counter._display).parentNode.classList.add('starting')
+
+                setTimeout(() => {
+                    document.getElementById(Counter._display).parentNode.classList.remove('starting')
+                    document.getElementById(Counter._display).parentNode.classList.add('started')
+                }, 5000)
+
+                Counter._timer = setInterval(() => {
+                    Counter._currentTime += 1000
+                    Counter.display();
+                }, 1000)
+            },
+            stop() {
+                clearInterval(Counter._timer)
+                document.getElementById(Counter._display).parentNode.classList.remove('started')
+                document.getElementById(Counter._display).parentNode.classList.add('paused')
+            },
+            reset() {
+                clearInterval(Counter._timer)
+                Counter._bkpTime = Counter._currentTime;
+                Counter._currentTime = 0;
+                document.getElementById(Counter._display).parentNode.classList.remove('started')
+                document.getElementById(Counter._display).parentNode.classList.remove('starting')
+                document.getElementById(Counter._display).parentNode.classList.remove('paused')
+                Counter.display();
+            },
+            display() {
+                const $display = document.getElementById(Counter._display);
+                const ms = Counter._currentTime;
+                $display.innerText = new Date(ms).toISOString().slice(11, 19);
+            }
+        }
+        const bind = {
+            OBS_WEBSOCKET_OUTPUT_STARTING: Counter.start,
+            //OBS_WEBSOCKET_OUTPUT_STARTED: Counter.start,
+            OBS_WEBSOCKET_OUTPUT_PAUSED: Counter.stop,
+            OBS_WEBSOCKET_OUTPUT_RESUMED: Counter.start,
+            OBS_WEBSOCKET_OUTPUT_STOPPING: Counter.reset,
+            //sOBS_WEBSOCKET_OUTPUT_STOPPED: Counter.stop
+        }
+        let obs = new WebSocket('ws://192.168.10.6:4455/');
+
+
+
+        // Connect to obs-ws running on 192.168.0.4
+        //obs.connect('ws://192.168.10.6:4455');
+
+        obs.onopen = function (event) {
+            console.log(event);
+            //const { cti_parameters } = App.Api.CTI
+            setTimeout(() => obs.send(JSON.stringify({ "op": 1, "d": { "rpcVersion": 1 } })), 1000);
+        };
+
+        obs.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            if (data.d.eventData) {
+                const eventData = data.d.eventData
+                console.log(eventData);
+                if (eventData.outputState && bind[eventData.outputState]) {
+                    bind[eventData.outputState]();
+                }
+            }
+        };
+
+        obs.onclose = function (event) {
+            console.log(event);
+        };
+
+        obs.onerror = function (error) {
+            console.log(event);
+        };
+
+// WEBSOCKET - EVENTS -------------------------------------------------------
+    </script>
+</body>
+
+</html>
