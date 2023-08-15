@@ -150,14 +150,9 @@
             OBS_WEBSOCKET_OUTPUT_PAUSED: Counter.stop,
             OBS_WEBSOCKET_OUTPUT_RESUMED: Counter.start,
             OBS_WEBSOCKET_OUTPUT_STOPPING: Counter.reset,
-            //sOBS_WEBSOCKET_OUTPUT_STOPPED: Counter.stop
+            //OBS_WEBSOCKET_OUTPUT_STOPPED: Counter.stop
         }
-        let obs = new WebSocket('ws://192.168.10.6:4455/');
-
-
-
-        // Connect to obs-ws running on 192.168.0.4
-        //obs.connect('ws://192.168.10.6:4455');
+        const obs = new WebSocket('ws://localhost:4455/');
 
         obs.onopen = function (event) {
             console.log(event);
